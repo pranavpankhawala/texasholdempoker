@@ -28,14 +28,14 @@ jobs:
 
       - name: Check JavaScript syntax
         run: |
-          for f in assets/admin/*.js assets/viewer/*.js; do
+          for f in assets/admin/*.js assets/viewer/*.js assets/play/*.js; do
             node --input-type=module --check < "$f" || { echo "Syntax error in $f"; exit 1; }
           done
 
       - name: Assemble static site
         run: |
           mkdir -p _site
-          cp index.html admin.html _site/
+          cp index.html admin.html host.html play.html _site/
           cp -r assets _site/
           if [ -d data ]; then cp -r data _site/; fi
           touch _site/.nojekyll

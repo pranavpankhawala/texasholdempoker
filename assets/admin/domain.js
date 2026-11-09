@@ -235,6 +235,7 @@ export function closeCheck(game) {
   const warnings = [];
   const { chipsIn, counted } = gameTotals(game);
   if (game.entries.length < 2) errors.push('A game needs at least two players.');
+  if (game.table?.hand) errors.push('A Chip Table hand is still in progress. Finish or cancel it on the host screen first.');
 
   if (game.type === 'cash') {
     const missing = game.entries.filter((e) => e.finalChips == null).length;

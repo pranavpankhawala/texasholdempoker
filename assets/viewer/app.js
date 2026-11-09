@@ -201,7 +201,7 @@ function renderLive(g) {
     <ol class="live-seats" aria-label="Seats in order">
       ${g.entries.map((e) => `<li class="${e.active ? '' : 'out'}">
         <span class="ls-name">${esc(pname(e.playerId))} <span aria-hidden="true">${role(e.playerId)}</span></span>
-        <span class="ls-meta">${!e.active ? (g.type === 'cash' ? 'Left' : `Out · ${ordinal(e.place)}`) : `${fmt(e.chipsIn)} in`}${e.rebuys ? ` · ${e.rebuys} rebuy${e.rebuys > 1 ? 's' : ''}` : ''}${e.knockouts ? ` · ${e.knockouts} KO` : ''}</span>
+        <span class="ls-meta">${!e.active ? (g.type === 'cash' ? 'Left' : `Out · ${ordinal(e.place)}`) : (e.stack != null ? `${fmt(e.stack)} chips` : `${fmt(e.chipsIn)} in`)}${e.rebuys ? ` · ${e.rebuys} rebuy${e.rebuys > 1 ? 's' : ''}` : ''}${e.knockouts ? ` · ${e.knockouts} KO` : ''}</span>
       </li>`).join('')}
     </ol>
   </section>`;

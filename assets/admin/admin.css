@@ -471,3 +471,8 @@ table.data tr.is-out th { color: var(--text-2); }
   .backdrop, .topbar, .tabs-wrap, .actions, .entry-actions, .hand-controls, .toast { display: none !important; }
   .glass { background: #fff; box-shadow: none; backdrop-filter: none; }
 }
+
+/* ---------- chip table option ---------- */
+.chip-table-opt { display: grid; gap: 8px; padding: 12px; border-radius: var(--radius-sm); background: var(--glass-hi); border: 1px solid var(--line); }
+.chip-table-opt .inline-form .field { flex: 1 1 120px; }
+.chip-table-opt legend { float: left; width: 100%; margin-bottom: 4px; }

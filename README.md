@@ -4,8 +4,10 @@ A static site for home poker nights. It tracks **chips, points, seasons and the 
 
 - **Standings (`index.html`)**: read-only leaderboard, points race chart, cash-game chip results, game history, player profiles, and a live view of the table.
 - **Admin (`admin.html`)**: PIN-locked console for running games, managing players and seasons, and changing settings.
+- **Chip Table host (`host.html`)**: admin-side screen that runs hands live while players bet from their phones.
+- **Chip Table player (`play.html`)**: players join with a room code or QR code, pick their seat, and use their phone as their chip stack.
 
-Each page has its own HTML, CSS and JS. They share no layouts or code.
+Admin pages (admin and host) and user pages (standings and player) each have their own HTML, CSS and JS and share no layouts or code.
 
 ## Features
 
@@ -21,6 +23,32 @@ Each page has its own HTML, CSS and JS. They share no layouts or code.
 | Stats | Points, games, wins, top-3 finishes, knockouts, average finish, cash net chips, points-race chart |
 | Backup | Export/import all data as JSON |
 | UX | Glass UI, dark by default with a light theme, respects `prefers-color-scheme` and `prefers-reduced-motion`, keyboard and screen-reader friendly, mobile-first |
+
+## Chip Table: phones instead of chips
+
+Inspired by apps like PointPia: real cards, virtual chips.
+
+1. **Admin → Table**: start a game, tick **Use Chip Table**, and set the blinds. You can also move a live game over with **Use Chip Table**.
+2. The **host screen** opens with a **room code, QR code and join link**.
+3. Players scan the code, open `play.html`, and **tap their seat**. A phone without a player can **Just watch**, which is a big-screen view for a TV or tablet.
+4. Host taps **Deal hand**. The button moves and the blinds are posted automatically.
+5. The player whose turn it is gets a buzz and sees **Fold / Check / Call / Raise** with a slider, ±1 BB steps, and **Min, ½ Pot, Pot, All-in** presets. The host can act for anyone, such as a player without a phone.
+6. When betting finishes, the host taps who won each pot. **Side pots** and **split pots** are handled, and odd chips go to the first winner left of the button.
+7. Between hands the host can change the blinds, record rebuys and add-ons, let players sit out or back in (cash games), undo the last hand, or **Finish game**. Results then go to the standings like any other game.
+
+**Rules handled:** heads-up blinds (the dealer posts the small blind and acts first pre-flop), minimum raises, short all-ins that don't reopen the betting, uncalled bets returned, and tournament bust-outs ranked by stack and credited to the player who won the chips.
+
+### How the phones connect
+
+There is still **no backend**. Phones connect **peer-to-peer (WebRTC)** to the host's browser using [PeerJS](https://peerjs.com/). The free public PeerJS server only introduces the devices to each other; game data then flows directly between them. Keep in mind:
+
+- **The host screen must stay open.** If the host's device sleeps or the tab closes, phones show "Reconnecting…" and rejoin automatically when it's back. The table state is saved, so nothing is lost.
+- **Phones rejoin their seat automatically** after a reload or screen lock, because each phone remembers an ID.
+- **Network.** Same Wi-Fi works best. Some mobile-carrier networks block direct connections; if a phone can't join, move it onto the same Wi-Fi as the host.
+- **Self-hosted broker (optional).** Add `?peer=your-host:port` (or `your-host:443:secure`) to the host page URL. The join link carries it to the players.
+- **Trust.** Seats are claimed by tapping, with no login, so play with people you trust. The host can **Free seat** to reassign a phone.
+
+The libraries are bundled in `assets/vendor/` (MIT licensed), so no CDN is needed.
 
 ## Where data lives
 
@@ -58,6 +86,8 @@ python3 -m http.server 8000
 ```
 index.html                 Standings page (read-only)
 admin.html                 Admin console
+host.html                  Chip Table host screen (admin side)
+play.html                  Chip Table player phone page
 assets/
   viewer/
     theme.js               Applies the saved theme before first paint
@@ -72,6 +102,14 @@ assets/
     domain.js              Game rules: chips, eliminations, dealer rotation, scoring
     app.js                 Rendering, dialogs and events
     admin.css
+    poker.js               Chip Table betting engine: blinds, turns, raises, side pots
+    net-host.js            PeerJS host networking
+    host.js / host.css     Chip Table host screen
+  play/
+    theme.js
+    net.js                 PeerJS player networking with auto-reconnect
+    play.js / play.css     Player phone UI
+  vendor/                  peerjs 1.5.4, qrcode-generator 1.4.4 (MIT)
 .github/workflows/deploy.yml
 ```
 

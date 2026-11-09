@@ -127,6 +127,25 @@ function normalizeGame(g) {
       history: Array.isArray(dealer.history) ? dealer.history.filter((x) => typeof x === 'string').slice(-100) : [],
     },
     results: Array.isArray(g.results) ? g.results.filter(isObj) : [],
+    table: normalizeTable(g.table),
+  };
+}
+
+/** Chip Table state (see poker.js). Kept as-is when well-formed, dropped otherwise. */
+function normalizeTable(t) {
+  if (!isObj(t) || !isObj(t.stacks) || typeof t.room !== 'string') return null;
+  const stacks = {};
+  for (const [pid, v] of Object.entries(t.stacks)) stacks[pid] = Math.max(0, Math.floor(num(v)));
+  return {
+    room: t.room.replace(/[^A-Z0-9]/g, '').slice(0, 8) || 'ROOM00',
+    sb: Math.max(1, Math.floor(num(t.sb, 50))),
+    bb: Math.max(1, Math.floor(num(t.bb, 100))),
+    stacks,
+    claims: isObj(t.claims) ? Object.fromEntries(Object.entries(t.claims).filter(([, v]) => typeof v === 'string')) : {},
+    handNo: Math.max(0, Math.floor(num(t.handNo))),
+    hand: isObj(t.hand) && Array.isArray(t.hand.order) && isObj(t.hand.committed) ? t.hand : null,
+    lastHand: isObj(t.lastHand) ? t.lastHand : null,
+    log: [],
   };
 }
 

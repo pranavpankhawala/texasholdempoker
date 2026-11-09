@@ -4,6 +4,7 @@
  */
 import * as store from './store.js';
 import * as D from './domain.js';
+import * as P from './poker.js';
 
 const state = {
   data: store.load(),
@@ -189,7 +190,13 @@ function showLock() {
   $('#pin').focus();
 }
 
+function returnTarget() {
+  return new URLSearchParams(location.search).get('return') === 'host' ? 'host.html' : null;
+}
+
 function showApp() {
+  const target = returnTarget();
+  if (target) { location.href = target; return; }
   $('#lock').hidden = true;
   $('#app').hidden = false;
   render();
@@ -358,6 +365,15 @@ function renderNewGame() {
         <label for="ng-stack">Starting stack (chips)</label>
         <input id="ng-stack" name="stack" type="number" inputmode="numeric" min="1" step="1" required value="${d.settings.defaultStack}">
       </div>
+      <fieldset class="field span-all chip-table-opt">
+        <legend>Chip Table</legend>
+        <label class="switch"><input type="checkbox" name="chipTable" id="ng-chiptable"><span>Players bet from their phones (no physical chips)</span></label>
+        <div class="inline-form">
+          <div class="field"><label for="ng-sb">Small blind</label><input id="ng-sb" name="sb" type="number" inputmode="numeric" min="1" step="1" value="${Math.max(1, Math.round(d.settings.defaultStack / 200))}"></div>
+          <div class="field"><label for="ng-bb">Big blind</label><input id="ng-bb" name="bb" type="number" inputmode="numeric" min="1" step="1" value="${Math.max(2, Math.round(d.settings.defaultStack / 100))}"></div>
+        </div>
+        <p class="hint">Blinds are only used by the Chip Table. You get a room code and QR code for players to join.</p>
+      </fieldset>
       <fieldset class="field span-all">
         <legend>Players at the table</legend>
         <p class="hint" id="ng-players-hint">Seats follow this order. You can shuffle or move seats after the game starts.</p>
@@ -372,7 +388,34 @@ function renderNewGame() {
   </section>`;
 }
 
+function renderChipTableGame(game) {
+  const t = game.table;
+  const isCash = game.type === 'cash';
+  return `
+  <section class="card glass game-head" aria-labelledby="live-h">
+    <div class="game-title">
+      <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span> Live on Chip Table · Room ${esc(t.room)}</p>
+      <h2 id="live-h">${esc(game.name)}</h2>
+      <p class="muted"><span class="badge">${isCash ? 'Cash game' : 'Tournament'}</span> ${esc(seasonName(game.seasonId))} · ${fmtDate(game.date)} · Blinds ${D.fmt(t.sb)} / ${D.fmt(t.bb)}</p>
+    </div>
+    <p>Players are betting from their phones. Run hands, rebuys and payouts from the host screen.</p>
+    <div class="actions">
+      <a class="btn primary" href="host.html">Open host screen</a>
+      ${btn('edit-game', 'Edit details', { pid: game.id })}
+    </div>
+  </section>
+  <section class="card glass" aria-labelledby="stacks-h">
+    <h2 id="stacks-h">Stacks${t.hand ? ` · hand #${t.hand.no} in progress` : ''}</h2>
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th scope="col">Seat</th><th scope="col">Player</th><th scope="col" class="num">Chips in</th><th scope="col" class="num">Stack</th></tr></thead>
+      <tbody>${game.entries.map((e, i) => `<tr class="${e.active ? '' : 'is-out'}"><td>${i + 1}</td><th scope="row">${name(e.playerId)}${e.active ? '' : ` <span class="status out">${isCash ? 'Sitting out' : `Out · ${D.ordinal(e.place)}`}</span>`}</th>
+        <td class="num">${D.fmt(D.entryChipsIn(e))}</td><td class="num">${D.fmt(t.stacks[e.playerId] ?? 0)}</td></tr>`).join('')}</tbody>
+    </table></div>
+  </section>`;
+}
+
 function renderLiveGame(game) {
+  if (game.table) return renderChipTableGame(game);
   const t = D.gameTotals(game);
   const pos = D.positions(game);
   const isCash = game.type === 'cash';
@@ -403,6 +446,7 @@ function renderLiveGame(game) {
       <div><dt>Hands</dt><dd>${D.fmt(game.dealer.hands)}</dd></div>
     </dl>
     <div class="actions">
+      ${btn('open-chip-table', 'Use Chip Table', { cls: 'btn ghost' })}
       ${btn('add-entry', `${ICON.plus} Add player`)}
       ${btn('shuffle', `${ICON.shuffle} Shuffle seats`)}
       ${btn('edit-game', 'Edit details', { pid: game.id })}
@@ -945,6 +989,27 @@ const ACTIONS = {
     commit('Seats shuffled. Button is on seat 1.');
   },
   'add-entry': addEntryDialog,
+  'open-chip-table': () => {
+    const g = currentGame();
+    openDialog({
+      title: 'Move this game to the Chip Table',
+      body: `<p>Players will bet from their phones. Each stack starts at the player’s current chips (their final count if entered, otherwise their buy-ins).</p>
+        <div class="inline-form">
+          <div class="field"><label for="ct-sb">Small blind</label><input id="ct-sb" name="sb" type="number" inputmode="numeric" min="1" step="1" value="${Math.max(1, Math.round(g.startingStack / 200))}"></div>
+          <div class="field"><label for="ct-bb">Big blind</label><input id="ct-bb" name="bb" type="number" inputmode="numeric" min="1" step="1" value="${Math.max(2, Math.round(g.startingStack / 100))}"></div>
+        </div>`,
+      confirmLabel: 'Open Chip Table',
+      onSubmit: (fd) => {
+        const sb = Math.floor(Number(fd.get('sb')));
+        const bb = Math.floor(Number(fd.get('bb')));
+        if (!(sb > 0 && bb >= sb)) return 'Big blind must be at least the small blind, and both above 0.';
+        g.table = P.createTable(g, { sb, bb });
+        store.save(state.data);
+        location.href = 'host.html';
+        return true;
+      },
+    });
+  },
   'edit-game': (gid) => editGameDialog(gid),
   'cancel-game': async () => {
     const g = currentGame();
@@ -1071,9 +1136,16 @@ const FORMS = {
       startingStack: stack,
       playerIds,
     });
+    if (fd.get('chipTable') === 'on') {
+      const sb = Math.floor(Number(fd.get('sb')));
+      const bb = Math.floor(Number(fd.get('bb')));
+      if (!(sb > 0 && bb >= sb)) { err.textContent = 'Big blind must be at least the small blind, and both above 0.'; $('#ng-bb').focus(); return; }
+      game.table = P.createTable(game, { sb, bb });
+    }
     state.data.games.push(game);
     state.data.liveGameId = game.id;
     commit(`${nm} started with ${playerIds.length} players.`, 'success');
+    if (game.table) { location.href = 'host.html'; return; }
     $('#a-next-hand-')?.focus();
   },
   'add-player': (form) => {

@@ -39,6 +39,7 @@ function sanitize(raw) {
         knockouts: num(e.knockouts),
         chipsIn: (Array.isArray(e.buys) ? e.buys : []).reduce((s, b) => s + (isObj(b) ? num(b.chips) : 0), 0),
         rebuys: (Array.isArray(e.buys) ? e.buys : []).filter((b) => isObj(b) && b.kind === 'rebuy').length,
+        stack: isObj(g.table) && isObj(g.table.stacks) && g.table.stacks[e.playerId] != null ? num(g.table.stacks[str(e.playerId)]) : null,
       })),
       dealer: isObj(g.dealer) ? { button: str(g.dealer.button) || null, hands: num(g.dealer.hands) } : { button: null, hands: 0 },
       results: (Array.isArray(g.results) ? g.results : []).filter(isObj).map((r) => ({
